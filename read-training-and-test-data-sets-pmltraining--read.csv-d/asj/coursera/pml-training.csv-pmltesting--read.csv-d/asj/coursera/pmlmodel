@@ -1,0 +1,52 @@
+#read training and test data sets
+pmltraining<-read.csv("d:/asj/coursera/pml-training.csv")
+pmltesting<-read.csv("d:/asj/coursera/pml-testing.csv")
+
+#identify coulmns having NA values
+nacols<-which(colSums(is.na(pmltraining))>0)
+#find out how many columns are there with NA values
+length(nacols)
+#find number of NA values in each column having NA values 
+navalues<-colSums(is.na(pmltraining[,nacols]))
+navalues
+#There are 67 columns with 19216 NA values therefore there is no point in replace
+#missing values as missing values are almost 98%
+# Therefore we will not consider those columns for training and building prediction model
+TrainingSet<-pmltraining[,-nacols]
+TestingSet<-pmltesting[,-nacols]
+
+#first six columns are related to timestamp therefore may not contribute in building model
+#Therefore ignore first 6 columns
+TrainingSet<-TrainingSet[,-c(1:6)]
+TestingSet<-TestingSet[,-c(1:6)]
+
+#Now identify covariates with with no variability
+nzv<-nearZeroVar(TrainingSet,saveMetrics=TRUE)
+
+TrainingSet<-TrainingSet[,-c(nzv$nzv==TRUE)]
+TestingSet<-TestingSet[,-c(nzv$nzv==TRUE)]
+
+#Trainclasse<-TrainingSet$classe
+
+FactorFeatures = which(lapply(TrainingSet[1:85], class) %in% c("factor"))
+
+
+TrainingSet<-TrainingSet[,-FactorFeatures]
+TestingSet<-TestingSet[,-FactorFeatures]
+
+intrain<-createDataPartition(TrainingSet$classe,p=.7,list=FALSE)
+FinalTrainingSet<-TrainingSet[intrain,]
+FinalCVSet<-TrainingSet[-intrain,]
+
+rforest_model <- randomForest(classe ~ ., data=FinalTrainingSet)
+
+FinalTrainingPred <- predict(rforest_model, FinalTrainingSet)
+print(confusionMatrix(FinalTrainingPred, FinalTrainingSet$classe))
+
+
+FinalCVPred<- predict(rforest_model, FinalCVSet)
+print(confusionMatrix(FinalCVPred, FinalCVSet$classe))
+
+
+testing_pred <- predict(rforest_model, TestingSet)
+
