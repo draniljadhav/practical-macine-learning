@@ -1,0 +1,120 @@
+Machine Learning: An Analysis of the Weight Lifting Exercises Dataset
+Reading Training and test data sets
+#read training and test data sets
+pmltraining<-read.csv("d:/asj/coursera/pml-training.csv")
+pmltesting<-read.csv("d:/asj/coursera/pml-testing.csv")
+Cleaning and Preprocessing Data 
+#identify coulmns having NA values
+nacols<-which(colSums(is.na(pmltraining))>0)
+#find out how many columns are there with NA values
+length(nacols)
+#find number of NA values in each column having NA values 
+navalues<-colSums(is.na(pmltraining[,nacols]))
+navalues
+#There are 67 columns with 19216 NA values therefore there is no point in replace
+#missing values as missing values are almost 98%
+# Therefore we will not consider those columns for training and building prediction model
+TrainingSet<-pmltraining[,-nacols]
+TestingSet<-pmltesting[,-nacols]
+#first six columns are related to timestamp therefore may not contribute in building model
+#Therefore ignore first 6 columns
+TrainingSet<-TrainingSet[,-c(1:6)]
+TestingSet<-TestingSet[,-c(1:6)]
+
+#Now identify covariates with with no variability
+nzv<-nearZeroVar(TrainingSet,saveMetrics=TRUE)
+
+TrainingSet<-TrainingSet[,-c(nzv$nzv==TRUE)]
+TestingSet<-TestingSet[,-c(nzv$nzv==TRUE)]
+#Trainclasse<-TrainingSet$classe
+Building Random Forest Model
+FactorFeatures = which(lapply(TrainingSet[1:85], class) %in% c("factor"))
+Model accuracy check
+TrainingSet<-TrainingSet[,-FactorFeatures]
+TestingSet<-TestingSet[,-FactorFeatures]
+intrain<-createDataPartition(TrainingSet$classe,p=.7,list=FALSE)
+FinalTrainingSet<-TrainingSet[intrain,]
+FinalCVSet<-TrainingSet[-intrain,]
+rforest_model <- randomForest(classe ~ ., data=FinalTrainingSet)
+Training Set Accuracy
+FinalTrainingPred <- predict(rforest_model, FinalTrainingSet)
+print(confusionMatrix(FinalTrainingPred, FinalTrainingSet$classe))
+
+Confusion matrix and statistics is as follows:
+          Reference
+Prediction    A    B    C    D    E
+         A 3906    0    0    0    0
+         B    0 2658    0    0    0
+         C    0    0 2396    0    0
+         D    0    0    0 2252    0
+         E    0    0    0    0 2525
+
+Overall Statistics
+                                     
+               Accuracy : 1          
+                 95% CI : (0.9997, 1)
+    No Information Rate : 0.2843     
+    P-Value [Acc > NIR] : < 2.2e-16  
+                                     
+                  Kappa : 1          
+ Mcnemar's Test P-Value : NA         
+
+Statistics by Class:
+
+                     Class: A Class: B Class: C Class: D Class: E
+Sensitivity            1.0000   1.0000   1.0000   1.0000   1.0000
+Specificity            1.0000   1.0000   1.0000   1.0000   1.0000
+Pos Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+Neg Pred Value         1.0000   1.0000   1.0000   1.0000   1.0000
+Prevalence             0.2843   0.1935   0.1744   0.1639   0.1838
+Detection Rate         0.2843   0.1935   0.1744   0.1639   0.1838
+Detection Prevalence   0.2843   0.1935   0.1744   0.1639   0.1838
+Balanced Accuracy      1.0000   1.0000   1.0000   1.0000   1.0000
+
+Therefore sample Accuracy is: 99.97%
+Expected out of Sample Accuracy:
+FinalCVPred<- predict(rforest_model, FinalCVSet)
+print(confusionMatrix(FinalCVPred, FinalCVSet$classe))
+Confusion matrix and statistics is as follows:
+
+
+          Reference
+Prediction    A    B    C    D    E
+         A 1674    4    0    0    0
+         B    0 1130    6    0    0
+         C    0    5 1019   12    1
+         D    0    0    1  951    3
+         E    0    0    0    1 1078
+
+Overall Statistics
+                                          
+               Accuracy : 0.9944          
+                 95% CI : (0.9921, 0.9961)
+    No Information Rate : 0.2845          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.9929          
+ Mcnemar's Test P-Value : NA              
+
+Statistics by Class:
+
+                     Class: A Class: B Class: C Class: D Class: E
+Sensitivity            1.0000   0.9921   0.9932   0.9865   0.9963
+Specificity            0.9991   0.9987   0.9963   0.9992   0.9998
+Pos Pred Value         0.9976   0.9947   0.9826   0.9958   0.9991
+Neg Pred Value         1.0000   0.9981   0.9986   0.9974   0.9992
+Prevalence             0.2845   0.1935   0.1743   0.1638   0.1839
+Detection Rate         0.2845   0.1920   0.1732   0.1616   0.1832
+Detection Prevalence   0.2851   0.1930   0.1762   0.1623   0.1833
+Balanced Accuracy      0.9995   0.9954   0.9947   0.9929   0.9980
+
+Therefore out of sample accuracy is: 99.44%
+Prediction for test data is as follows: 
+testing_pred <- predict(rforest_model, TestingSet)
+1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
+ B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
+Levels: A B C D E
+
+Conclusion
+Our prediction model is quite accurate and we are able right answers for all the testing set.
+
